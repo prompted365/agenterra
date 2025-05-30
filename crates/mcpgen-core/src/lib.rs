@@ -5,6 +5,7 @@ use thiserror::Error;
 
 pub mod openapi;
 pub mod generator;
+pub mod template;
 
 /// Errors that can occur during MCP generation
 #[derive(Error, Debug)]
@@ -97,14 +98,84 @@ impl Config {
 
 /// Generate MCP server code from a configuration
 pub async fn generate(config: &Config) -> Result<()> {
-    // TODO: Implement actual code generation
-    // 1. Load and parse OpenAPI spec
-    // 2. Apply filters based on config
-    // 3. Generate code using the specified template
-    // 4. Write output files
-    
     log::info!("Generating MCP server from OpenAPI spec: {}", config.openapi_spec);
     log::debug!("Using template: {}", config.template);
+    
+    // 1. Load and parse OpenAPI spec
+    let spec = openapi::parser::parse_spec(Path::new(&config.openapi_spec)).await?
+        .as_json()?;
+    
+    // 2. Set up template manager
+    let template_dir = Path::new(&config.output_dir).join("templates");
+    let template_manager = template::TemplateManager::new(&template_dir)?;
+    
+    // 3. Extract endpoints and generate handlers
+    let mut endpoints = Vec::new();
+    
+    if let Some(paths) = spec.get("paths") {
+        if let Some(paths_obj) = paths.as_object() {
+            for (path, methods) in paths_obj {
+                if let Some(methods_obj) = methods.as_object() {
+                    for (method, details) in methods_obj {
+                        // Skip if not included or explicitly excluded
+                        let operation_id = format!("{} {}", method.to_uppercase(), path);
+                        if !config.include_all && !config.include_operations.contains(&operation_id)
+                            || config.exclude_operations.contains(&operation_id) {
+                            continue;
+                        }
+                        
+                        // Extract endpoint info
+                        let endpoint = path.trim_start_matches('/')
+                            .replace('/', "_")
+                            .replace('{', "")
+                            .replace('}', "");
+                        
+                        let mut endpoint_info = std::collections::HashMap::new();
+                        endpoint_info.insert("endpoint".to_string(), endpoint.clone());
+                        endpoint_info.insert("method".to_string(), method.to_uppercase());
+                        endpoint_info.insert("path".to_string(), path.to_string());
+                        endpoint_info.insert("fn_name".to_string(), format!("{}_handler", endpoint));
+                        
+                        if let Some(details_obj) = details.as_object() {
+                            if let Some(summary) = details_obj.get("summary") {
+                                endpoint_info.insert("summary".to_string(), summary.as_str().unwrap_or("").to_string());
+                            }
+                            if let Some(description) = details_obj.get("description") {
+                                endpoint_info.insert("description".to_string(), description.as_str().unwrap_or("").to_string());
+                            }
+                            if let Some(tags) = details_obj.get("tags") {
+                                if let Some(tags_arr) = tags.as_array() {
+                                    if let Some(first_tag) = tags_arr.first() {
+                                        endpoint_info.insert("tag".to_string(), first_tag.as_str().unwrap_or("").to_string());
+                                    }
+                                }
+                            }
+                        }
+                        
+                        endpoints.push(endpoint_info);
+                    }
+                }
+            }
+        }
+    }
+    
+    // 4. Generate handlers module
+    let handlers_dir = Path::new(&config.output_dir).join("src/handlers");
+    tokio::fs::create_dir_all(&handlers_dir).await?;
+    
+    template_manager.generate_handlers_mod(
+        endpoints.clone(),
+        handlers_dir.join("mod.rs"),
+    ).await?;
+    
+    // 5. Generate individual handler files
+    for endpoint_info in endpoints {
+        template_manager.generate_handler(
+            "handler.rs",
+            &endpoint_info,
+            handlers_dir.join(format!("{}.rs", endpoint_info["endpoint"])),
+        ).await?;
+    }
     
     Ok(())
 }
@@ -112,7 +183,7 @@ pub async fn generate(config: &Config) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    
     use tempfile::NamedTempFile;
     
     #[test]
@@ -121,7 +192,7 @@ mod tests {
         config.include_all = true;
         config.exclude_operations = vec!["unwanted.endpoint".to_string()];
         
-        let mut file = NamedTempFile::new()?;
+        let file = NamedTempFile::new()?;
         let path = file.path().to_path_buf();
         
         // Test YAML

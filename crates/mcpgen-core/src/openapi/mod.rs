@@ -6,3 +6,4 @@ pub mod parser;
 
 pub use schema::{SchemaFormat, SchemaType, SchemaValue, SchemaMetadata, SourceFormat};
 pub use types::*;
+pub use parser::*;
