@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/mcpgen-core",
+    "crates/mcpgen-cli",
+]
+resolver = "2"

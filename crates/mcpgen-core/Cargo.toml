@@ -1,0 +1,20 @@
+[package]
+name = "mcpgen-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core library for generating MCP servers from OpenAPI specs"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+openapiv3 = "2.1.0"
+thiserror = "1.0"
+log = "0.4"
+handlebars = "4.4"
+regex = "1.10"
+url = "2.4"
+
+[dev-dependencies]
+tempfile = "3.3"
