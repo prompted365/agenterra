@@ -43,6 +43,8 @@ mcpgen update --spec api.yaml
 
 ## Project Structure 📁
 
+See [tests/fixtures/README.md](tests/fixtures/README.md) for details on local OpenAPI test fixtures and the Petstore update script.
+
 ```
 my-server/
 ├── Cargo.toml
