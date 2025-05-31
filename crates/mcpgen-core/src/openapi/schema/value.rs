@@ -17,52 +17,39 @@ pub enum SourceFormat {
 /// Internally stored as JSON since OpenAPI tools typically work with JSON Schema.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchemaValue {
-    /// The underlying JSON value
     #[serde(flatten)]
-    inner: serde_json::Value,
+    pub inner: serde_json::Value,
+}
 
-    /// The original format this value was parsed from
-    #[serde(skip)]
-    format: SourceFormat,
+impl SchemaValue {
+    pub fn as_json(&self) -> &serde_json::Value {
+        &self.inner
+    }
 }
 
 impl SchemaValue {
     /// Create a new SchemaValue from a JSON string
     pub fn from_json(json: &str) -> crate::Result<Self> {
         let inner = serde_json::from_str(json)?;
-        Ok(Self {
-            inner,
-            format: SourceFormat::Json,
-        })
+        Ok(Self { inner })
     }
 
     /// Create a new SchemaValue from a YAML string
     pub fn from_yaml(yaml: &str) -> crate::Result<Self> {
         let yaml_value: serde_yaml::Value = serde_yaml::from_str(yaml)?;
         let inner = serde_json::to_value(&yaml_value)?;
-        Ok(Self {
-            inner,
-            format: SourceFormat::Yaml,
-        })
+        Ok(Self { inner })
     }
 
     /// Get the underlying JSON value
     pub fn into_json(self) -> serde_json::Value {
         self.inner
     }
-
-    /// Get the format this value was originally parsed from
-    pub fn format(&self) -> SourceFormat {
-        self.format
-    }
 }
 
 impl From<serde_json::Value> for SchemaValue {
     fn from(value: serde_json::Value) -> Self {
-        Self {
-            inner: value,
-            format: SourceFormat::Json,
-        }
+        Self { inner: value }
     }
 }
 
@@ -71,10 +58,7 @@ impl TryFrom<serde_yaml::Value> for SchemaValue {
 
     fn try_from(value: serde_yaml::Value) -> Result<Self, Self::Error> {
         let inner = serde_json::to_value(&value)?;
-        Ok(Self {
-            inner,
-            format: SourceFormat::Yaml,
-        })
+        Ok(Self { inner })
     }
 }
 
@@ -86,7 +70,8 @@ mod tests {
     fn test_json_roundtrip() -> crate::Result<()> {
         let json = r#"{"key": "value"}"#;
         let schema = SchemaValue::from_json(json)?;
-        assert_eq!(schema.format(), SourceFormat::Json);
+        // format field removed: just check parse/roundtrip
+        assert!(schema.as_json()["key"] == "value");
 
         let value = schema.into_json();
         assert_eq!(value["key"], "value");
@@ -97,7 +82,8 @@ mod tests {
     fn test_yaml_conversion() -> crate::Result<()> {
         let yaml = "key: value";
         let schema = SchemaValue::from_yaml(yaml)?;
-        assert_eq!(schema.format(), SourceFormat::Yaml);
+        // format field removed: just check parse/roundtrip
+        assert!(schema.as_json()["key"] == "value");
 
         let value = schema.into_json();
         assert_eq!(value["key"], "value");
