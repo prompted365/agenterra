@@ -16,12 +16,6 @@ use rmcp::{ServerHandler, Error, model::*, service::*, tool};
 #[derive(Clone, Debug, Default)]
 pub struct McpServer;
 
-impl McpServer {
-    pub fn new() -> Self {
-        McpServer::default()
-    }
-}
-
 #[tool(tool_box)]
 impl McpServer {
     /// Returns MCP server status for Inspector/health validation
@@ -33,9 +27,9 @@ impl McpServer {
     {%- for ep in endpoints %}
     /// MCP API `/{{ ep.endpoint }}` endpoint handler
     #[tool(description = r#"{{ ep.summary }} - {{ ep.description }} - {{ ep.tags.0 }}"#)]
-    pub async fn {{ ep.fn_name }}(&self, #[tool(aggr)] params: {{ ep.endpoint }}::{{ ep.endpoint_cap }}Parameters) -> Result<CallToolResult, rmcp::Error> {
+    pub async fn {{ ep.fn_name }}(&self, #[tool(aggr)] params: {{ ep.endpoint }}::{{ ep.parameters_type }}) -> Result<CallToolResult, rmcp::Error> {
         let config = Config::default();
-        let response = {{ ep.endpoint }}::{{ ep.endpoint }}_handler(&config, &params).await;
+        let response = {{ ep.endpoint }}::{{ ep.fn_name }}_handler(&config, &params).await;
         response
     }
     {%- endfor %}
@@ -64,20 +58,11 @@ impl ServerHandler for McpServer {
                 tools: Some(tools_capability),
             },
             server_info: Implementation::from_build_env(),
-            instructions: Some(r#"{
-  "mcp_agent_rules": {
-    "critical": "Never assume field, filter, or sort compatibility across endpoints. Always check the endpoint schema.",
-    "field_usage": "Use only fields present in the current endpoint schema. Confirm field is allowed for filter, sort, or output.",
-    "schema_discovery": "Valid fields for each endpoint can always be discovered programmatically via the MCP resources capability. Use the /schema endpoints (see list_resources) to fetch the full schema for any endpoint—never guess or hardcode field lists.",
-    "query_validation_checklist": [
-      "Field exists in endpoint schema",
-      "Field is allowed for intended operation (filter/sort/output)",
-      "Never use a field from another endpoint"
-    ],
-    "error_handling": "On query error, re-validate schema and adjust. Never retry unchanged queries.",
-    "pitfall": "Most common error: using a field from another endpoint or for an unsupported operation."
-  }
-}"#.into()),
+            {% if agent_instructions %}
+            instructions: Some(r#"{{ agent_instructions }}"#.into()),
+            {% else %}
+            instructions: None,
+            {% endif %}
         };
 
         debug!("[MCP] Returning ServerInfo with enabled tools and resources: {:?}", info);
@@ -118,7 +103,7 @@ impl ServerHandler for McpServer {
         let result = if let Some(endpoint) = uri.strip_prefix(prefix) {
             let schema_json = match endpoint.to_lowercase().as_str() {
                 {%- for ep in endpoints %}
-                "{{ ep.endpoint }}" => include_str!("../../public/schemas/{{ ep.endpoint }}.json"),
+                "{{ ep.endpoint }}" => include_str!("../../schemas/{{ ep.endpoint }}.json"),
                 {%- endfor %}
                 _ => return std::future::ready(Err(Error::from(ErrorData::resource_not_found(
                     format!("Schema not found for endpoint '{}': unknown endpoint", endpoint),
