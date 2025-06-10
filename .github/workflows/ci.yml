@@ -80,3 +80,29 @@ jobs:
 
     - name: Run security audit
       run: cargo audit
+
+  release-validation:
+    name: Release Configuration
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Install cargo-release
+      run: cargo install cargo-release
+
+    - name: Validate release configuration
+      run: |
+        # Validate that all files referenced in release.toml exist
+        cargo release config
+        # Run a dry-run patch release to validate configuration
+        # Use --allow-branch to work with detached HEAD in CI
+        cargo release patch --allow-branch HEAD --no-verify
