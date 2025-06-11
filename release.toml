@@ -5,6 +5,9 @@
 consolidate-commits = true
 shared-version = true
 
+# Allow releases from main and HEAD (for CI)
+allow-branch = ["main", "HEAD"]
+
 # Commit and tag configuration
 pre-release-commit-message = "chore: release {{version}}"
 tag-message = "chore: release {{version}}"
