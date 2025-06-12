@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **Repository:** https://github.com/clafollett/agenterra
-**Version:** v0.0.9
+**Version:** Read the badge in the README.md
 
 ## Project Standards & Conventions
 
