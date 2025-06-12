@@ -6,10 +6,7 @@ publish = false
 
 # Per-package overrides (optional)
 [[package]]
-name = "agenterra-cli"
+name = "agenterra"
 
 [[package]]
 name = "agenterra-core"
-
-[[package]]
-name = "agenterra"
