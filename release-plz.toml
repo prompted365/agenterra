@@ -10,3 +10,4 @@ name = "agenterra"
 
 [[package]]
 name = "agenterra-core"
+release = false
