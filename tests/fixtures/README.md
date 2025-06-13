@@ -26,6 +26,7 @@ To validate all fixture JSON files:
 
 ```bash
 jq . openapi/*.json
+jq . har/*.har
 ```
 
 ---
@@ -57,3 +58,10 @@ jq . openapi/*.json
 > You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 If you redistribute this repository, please retain this notice and comply with the terms of the Apache 2.0 license.
+
+---
+
+## Sample HAR File
+
+- **har/sample.har** is a minimal HTTP Archive used for unit tests.
+- The file contains two example requests to demonstrate endpoint extraction.
