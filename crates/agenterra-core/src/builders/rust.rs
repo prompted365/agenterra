@@ -77,9 +77,9 @@ impl EndpointContextBuilder for RustEndpointContextBuilder {
             path: op.path.clone(),
             properties_type: to_upper_camel_case(&format!("{}_properties", op.id)),
             response_type: to_upper_camel_case(&format!("{}_response", op.id)),
-            envelope_properties: serde_json::json!({}), // TODO: Extract from op.responses if present
-            properties: vec![], // TODO: Extract properties from op.responses and map to RustPropertyInfo
-            properties_for_handler: vec![],
+            envelope_properties: extract_response_properties(op),
+            properties: build_property_info(op),
+            properties_for_handler: collect_property_names(op),
             parameters: op
                 .parameters
                 .clone()
@@ -102,10 +102,10 @@ impl EndpointContextBuilder for RustEndpointContextBuilder {
             summary: op.summary.clone().unwrap_or_default(),
             description: op.description.clone().unwrap_or_default(),
             tags: op.tags.clone().unwrap_or_default(),
-            properties_schema: serde_json::Map::new(), // TODO: Extract from op.responses
-            response_schema: serde_json::json!({}),    // TODO: Extract from op.responses
-            spec_file_name: None,                      // TODO: Set if available
-            valid_fields: vec![],                      // TODO: Populate with valid fields
+            properties_schema: extract_properties_schema(op),
+            response_schema: extract_response_schema(op),
+            spec_file_name: None,
+            valid_fields: collect_property_names(op),
         };
 
         // Convert to JSON
@@ -130,4 +130,53 @@ fn map_openapi_schema_to_rust_type(schema: Option<&JsonValue>) -> String {
     } else {
         "String".to_string()
     }
+}
+
+fn extract_response_schema(op: &OpenApiOperation) -> JsonValue {
+    op.responses
+        .get("200")
+        .and_then(|resp| resp.content.as_ref())
+        .and_then(|content| content.get("application/json"))
+        .and_then(|c| c.get("schema"))
+        .cloned()
+        .unwrap_or_else(|| JsonValue::Null)
+}
+
+fn extract_properties_schema(op: &OpenApiOperation) -> JsonMap<String, JsonValue> {
+    extract_response_schema(op)
+        .get("properties")
+        .and_then(JsonValue::as_object)
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn extract_response_properties(op: &OpenApiOperation) -> JsonValue {
+    extract_response_schema(op)
+        .get("properties")
+        .cloned()
+        .unwrap_or_else(|| JsonValue::Null)
+}
+
+fn build_property_info(op: &OpenApiOperation) -> Vec<RustPropertyInfo> {
+    let props = extract_properties_schema(op);
+    props
+        .iter()
+        .map(|(name, schema)| RustPropertyInfo {
+            name: name.clone(),
+            rust_type: map_openapi_schema_to_rust_type(Some(schema)),
+            title: schema
+                .get("title")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            description: schema
+                .get("description")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            example: schema.get("example").cloned(),
+        })
+        .collect()
+}
+
+fn collect_property_names(op: &OpenApiOperation) -> Vec<String> {
+    extract_properties_schema(op).keys().cloned().collect()
 }

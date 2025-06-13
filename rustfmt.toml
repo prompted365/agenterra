@@ -1,7 +1,7 @@
 # Rustfmt configuration for Agenterra
 # Ensures consistent formatting across the project
 
-edition = "2024"
+edition = "2021"
 max_width = 100
 hard_tabs = false
 tab_spaces = 4
