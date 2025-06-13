@@ -19,7 +19,7 @@ impl EndpointContext {
         template: TemplateKind,
         operations: Vec<OpenApiOperation>,
     ) -> crate::Result<Vec<JsonValue>> {
-        let builder = Self::get_builder(template);
+        let builder = Self::get_builder(template)?;
         let mut contexts = Vec::new();
         for op in operations {
             contexts.push(builder.build(&op)?);
@@ -35,10 +35,13 @@ impl EndpointContext {
         Ok(contexts)
     }
 
-    pub fn get_builder(template: TemplateKind) -> Box<dyn EndpointContextBuilder> {
+    pub fn get_builder(template: TemplateKind) -> crate::Result<Box<dyn EndpointContextBuilder>> {
         match template {
-            TemplateKind::RustAxum => Box::new(rust::RustEndpointContextBuilder),
-            _ => unimplemented!("Builder not implemented for template: {:?}", template),
+            TemplateKind::RustAxum => Ok(Box::new(rust::RustEndpointContextBuilder)),
+            _ => Err(crate::error::Error::template(format!(
+                "Builder not implemented for template: {:?}",
+                template
+            ))),
         }
     }
 }

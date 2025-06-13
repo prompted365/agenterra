@@ -21,7 +21,7 @@ use super::{TemplateDir, TemplateKind, TemplateOptions};
 
 // External imports (alphabetized)
 use serde::Serialize;
-use serde_json::{Map, Value as JsonValue, json};
+use serde_json::{json, Map, Value as JsonValue};
 use tera::{Context, Tera};
 
 /// Manages loading and rendering of code generation templates
@@ -447,7 +447,11 @@ impl TemplateManager {
         }
 
         // Add spec file name for reference in templates
-        base_map.insert("spec_file_name".to_string(), json!("openapi.json"));
+        let spec_file = Path::new(&config.openapi_schema_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("openapi.json");
+        base_map.insert("spec_file_name".to_string(), json!(spec_file));
 
         // Extract operations from the OpenAPI spec
         let operations = openapi_context.parse_operations().await?;
@@ -657,7 +661,7 @@ impl TemplateManager {
             if include && !exclude {
                 let mut context = base_context.clone();
 
-                let builder = EndpointContext::get_builder(self.template_kind());
+                let builder = EndpointContext::get_builder(self.template_kind())?;
                 let endpoint_context = builder.build(operation)?;
 
                 // Merge the endpoint context into the template context
@@ -669,8 +673,8 @@ impl TemplateManager {
 
                 // Add operation metadata
                 context.insert("operation_id", &operation.id);
-                context.insert("method", &"get"); // TODO: Get actual method
-                context.insert("path", &format!("/{}", &operation.id)); // TODO: Get actual path
+                context.insert("method", &operation.method);
+                context.insert("path", &operation.path);
 
                 // Insert OpenAPI-native fields
                 context.insert("operation_id", &operation.id);
@@ -953,10 +957,20 @@ impl TemplateManager {
 
         if !self.manifest.hooks.post_generate.is_empty() {
             for command in &self.manifest.hooks.post_generate {
+                if command.contains(';') || command.contains('\n') || command.contains("&&") {
+                    return Err(io::Error::other(format!(
+                        "Invalid characters in post-generation hook: {}",
+                        command
+                    ))
+                    .into());
+                }
                 log::info!("Running post-generation hook: {}", command);
-                let output = AsyncCommand::new("sh")
-                    .arg("-c")
-                    .arg(command)
+                let mut parts = command.split_whitespace();
+                let program = parts
+                    .next()
+                    .ok_or_else(|| io::Error::other("Empty post-generation hook command"))?;
+                let output = AsyncCommand::new(program)
+                    .args(parts)
                     .current_dir(output_path)
                     .output()
                     .await
@@ -1050,7 +1064,7 @@ impl TemplateManager {
 mod tests {
     use super::*;
     use crate::manifest::TemplateHooks;
-    use serde_json::{Map, json};
+    use serde_json::{json, Map};
     use tempfile;
     use tokio;
 

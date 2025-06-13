@@ -32,7 +32,7 @@ use crate::Error;
 
 // External imports (alphabetized)
 use serde::{Deserialize, Serialize};
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 use tokio::fs;
 
 /// Represents an OpenAPI specification
@@ -222,6 +222,7 @@ impl OpenApiContext {
 
                     operations.push(OpenApiOperation {
                         id: operation_id,
+                        method: method.to_string(),
                         path: path.clone(),
                         summary,
                         description,
@@ -644,6 +645,8 @@ pub struct OpenApiOperation {
     /// Unique string used to identify the operation. The id MUST be unique among all operations described in the API.
     #[serde(rename = "operationId")]
     pub id: String,
+    /// HTTP method for this operation (e.g., "get" or "post")
+    pub method: String,
     /// The path where this operation is defined (e.g., "/pet/findByStatus")
     pub path: String,
     /// A list of tags for API documentation control. Tags can be used for logical grouping of operations.

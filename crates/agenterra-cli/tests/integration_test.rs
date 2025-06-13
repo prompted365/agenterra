@@ -1,6 +1,6 @@
 //! End-to-end integration tests for Agenterra CLI
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -91,11 +91,13 @@ mod tests {
     const REQUIRED_FILES: &[&str] = &["Cargo.toml", "src/main.rs"];
 
     #[test]
-    fn test_url_based_openapi_v3_schema() -> Result<()> {
-        // Test the URL-based OpenAPI v3 schema
+    fn test_file_based_openapi_v3_schema() -> Result<()> {
+        // Test the local OpenAPI v3 schema to avoid network flakiness
+        let v3_schema_path =
+            get_test_openapi_schema_path("tests/fixtures/openapi/petstore.openapi.v3.json");
         test_openapi_schema(
-            "https://petstore3.swagger.io/api/v3/openapi.json",
-            "URL-based",
+            &v3_schema_path,
+            "OpenAPI v3 file-based",
             Some("https://petstore3.swagger.io"),
         )
     }

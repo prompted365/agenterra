@@ -11,6 +11,7 @@ use crate::config::Config;
 // External dependencies
 use log::debug;
 use rmcp::{ServerHandler, Error, model::*, service::*, tool};
+use std::future::Future;
 
 #[derive(Clone, Debug, Default)]
 pub struct McpServer;
