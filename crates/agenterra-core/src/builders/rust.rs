@@ -139,7 +139,7 @@ fn extract_response_schema(op: &OpenApiOperation) -> JsonValue {
         .and_then(|content| content.get("application/json"))
         .and_then(|c| c.get("schema"))
         .cloned()
-        .unwrap_or_else(|| JsonValue::Null)
+        .unwrap_or(JsonValue::Null)
 }
 
 fn extract_properties_schema(op: &OpenApiOperation) -> JsonMap<String, JsonValue> {
@@ -154,7 +154,7 @@ fn extract_response_properties(op: &OpenApiOperation) -> JsonValue {
     extract_response_schema(op)
         .get("properties")
         .cloned()
-        .unwrap_or_else(|| JsonValue::Null)
+        .unwrap_or(JsonValue::Null)
 }
 
 fn build_property_info(op: &OpenApiOperation) -> Vec<RustPropertyInfo> {

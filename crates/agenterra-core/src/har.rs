@@ -49,7 +49,11 @@ impl HarContext {
     pub async fn from_file<P: AsRef<Path>>(path: P) -> crate::Result<Self> {
         let content = fs::read_to_string(&path).await?;
         let har: HarFile = serde_json::from_str(&content).map_err(|e| {
-            Error::config(format!("Failed to parse HAR {}: {}", path.as_ref().display(), e))
+            Error::config(format!(
+                "Failed to parse HAR {}: {}",
+                path.as_ref().display(),
+                e
+            ))
         })?;
         Ok(Self {
             entries: har.log.entries,
@@ -95,9 +99,14 @@ mod tests {
         let ctx = HarContext::from_file(&har_path).await?;
         let ops = ctx.unique_operations();
         assert_eq!(ops.len(), 2);
-        assert!(ops.contains(&HarOperation { method: "GET".into(), path: "/api/items".into() }));
-        assert!(ops.contains(&HarOperation { method: "POST".into(), path: "/api/items".into() }));
+        assert!(ops.contains(&HarOperation {
+            method: "GET".into(),
+            path: "/api/items".into()
+        }));
+        assert!(ops.contains(&HarOperation {
+            method: "POST".into(),
+            path: "/api/items".into()
+        }));
         Ok(())
     }
 }
-

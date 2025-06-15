@@ -20,8 +20,8 @@ struct Cli {
 }
 
 #[derive(clap::Subcommand, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Commands {
-    // TODO: Add future subcommands here (e.g., Validate, ListTemplates, etc.)
     /// Scaffold a new MCP server from an OpenAPI spec
     Scaffold {
         /// Project name
@@ -53,6 +53,8 @@ pub enum Commands {
         #[arg(long)]
         base_url: Option<Url>,
     },
+    /// List available template kinds
+    ListTemplates,
 }
 
 #[tokio::main]
@@ -203,6 +205,12 @@ async fn main() -> anyhow::Result<()> {
                 "✅ Successfully generated server in: {}",
                 output_path.display()
             );
+        }
+        Commands::ListTemplates => {
+            println!("Available template kinds:");
+            for kind in TemplateKind::all() {
+                println!("- {}", kind.as_str());
+            }
         }
     }
     Ok(())
