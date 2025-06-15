@@ -18,6 +18,7 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 tempfile = "3.10"
+dialoguer = "0.11"
 
 [[bin]]
 name = "agenterra"

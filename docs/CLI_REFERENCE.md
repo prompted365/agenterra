@@ -8,6 +8,7 @@ This document provides a comprehensive reference for the Agenterra command-line 
 - [Global Options](#global-options)
 - [Commands](#commands)
   - [scaffold](#scaffold)
+  - [init](#init)
 - [Examples](#examples)
 - [Exit Codes](#exit-codes)
 
@@ -57,6 +58,14 @@ agenterra scaffold --spec api.yaml --output generated --template custom --templa
 
 # Configure server port and log file
 agenterra scaffold --spec api.yaml --output generated --port 8080 --log-file my-server
+```
+
+### init
+
+Run an interactive wizard to scaffold a new MCP server.
+
+```bash
+agenterra init
 ```
 
 ## Exit Codes

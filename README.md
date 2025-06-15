@@ -37,6 +37,12 @@
 
 ### Method 1: Build & Run from Source
 
+Run an interactive wizard with:
+
+```bash
+agenterra init
+```
+
 ```bash
 # Clone the repository
 git clone https://github.com/clafollett/agenterra.git

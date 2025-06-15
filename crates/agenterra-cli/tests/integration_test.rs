@@ -145,6 +145,31 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_help_includes_init() -> Result<()> {
+        cleanup_env_vars();
+        let ctx = TestContext::new()?;
+
+        let build_status = Command::new("cargo")
+            .args(["build"])
+            .status()
+            .context("Failed to build agenterra CLI")?;
+        if !build_status.success() {
+            bail!("Failed to build agenterra CLI (status: {})", build_status);
+        }
+
+        let mut cmd = ctx.build_command()?;
+        cmd.arg("--help");
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            bail!("--help command failed");
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("init"));
+        Ok(())
+    }
+
     // Helper function to clean up environment variables after test
     fn cleanup_env_vars() {
         let env_vars = [
