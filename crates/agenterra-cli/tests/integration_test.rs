@@ -1,5 +1,6 @@
 //! End-to-end integration tests for Agenterra CLI
 
+use agenterra_core::TemplateKind;
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -108,6 +109,40 @@ mod tests {
         let v2_schema_path =
             get_test_openapi_schema_path("tests/fixtures/openapi/petstore.swagger.v2.json");
         test_openapi_schema(&v2_schema_path, "Swagger v2 file-based", None)
+    }
+
+    #[test]
+    fn test_list_templates() -> Result<()> {
+        cleanup_env_vars();
+        let ctx = TestContext::new()?;
+
+        // Build CLI binary
+        let build_status = Command::new("cargo")
+            .args(["build"])
+            .status()
+            .context("Failed to execute cargo build for agenterra CLI")?;
+        if !build_status.success() {
+            bail!("Failed to build agenterra CLI (status: {})", build_status);
+        }
+
+        // Run list-templates command
+        let mut cmd = ctx.build_command()?;
+        cmd.arg("list-templates");
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            bail!(
+                "list-templates command failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for kind in TemplateKind::all() {
+            assert!(stdout.contains(kind.as_str()));
+        }
+
+        Ok(())
     }
 
     // Helper function to clean up environment variables after test

@@ -7,9 +7,9 @@ pub mod builders;
 pub mod config;
 pub mod error;
 pub mod generate;
+pub mod har;
 pub mod manifest;
 pub mod openapi;
-pub mod har;
 pub mod templates;
 pub mod utils;
 
@@ -17,8 +17,8 @@ pub use crate::{
     config::Config,
     error::{Error, Result},
     generate::generate,
-    openapi::OpenApiContext,
     har::{HarContext, HarOperation},
+    openapi::OpenApiContext,
     templates::{TemplateDir, TemplateKind, TemplateManager, TemplateOptions},
 };
 
