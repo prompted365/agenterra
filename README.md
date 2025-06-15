@@ -51,6 +51,9 @@ cd agenterra
 # Generate from a local file without install:
 cargo run -p agenterra -- scaffold --schema-path ./tests/fixtures/openapi/petstore.openapi.v3.json --output .agenterra/cargo_run_petstore_mcp_server_local_file
 
+# Automatically rebuild when the schema changes
+cargo run -p agenterra -- scaffold --schema-path ./tests/fixtures/openapi/petstore.openapi.v3.json --output .agenterra/cargo_run_petstore_watch --watch
+
 # Generate from a remote URL without install:
 cargo run -p agenterra -- scaffold --schema-path https://petstore3.swagger.io/api/v3/openapi.json --output .agenterra/cargo_run_petstore_mcp_server_remote_url
 

@@ -6,6 +6,8 @@ use reqwest::Url;
 use std::path::{Path, PathBuf};
 
 use dialoguer::{theme::ColorfulTheme, Input, Select};
+use notify::{recommended_watcher, RecursiveMode, Watcher};
+use tokio::sync::mpsc;
 
 // External imports (alphabetized)
 use agenterra_core::{TemplateKind, TemplateManager, TemplateOptions};
@@ -54,6 +56,9 @@ pub enum Commands {
         /// Base URL of the OpenAPI specification (Optional)
         #[arg(long)]
         base_url: Option<Url>,
+        /// Watch schema file for changes and rebuild automatically
+        #[arg(long)]
+        watch: bool,
     },
     /// Interactive scaffolding flow
     Init,
@@ -72,10 +77,11 @@ struct ScaffoldArgs {
     log_file: Option<String>,
     port: Option<u16>,
     base_url: Option<Url>,
+    watch: bool,
 }
 
 /// Execute the scaffold flow with the provided arguments
-async fn run_scaffold(args: ScaffoldArgs) -> anyhow::Result<()> {
+async fn run_scaffold(args: &ScaffoldArgs) -> anyhow::Result<()> {
     // Parse template
     let template_kind_enum: TemplateKind = args
         .template_kind
@@ -165,13 +171,18 @@ async fn run_scaffold(args: ScaffoldArgs) -> anyhow::Result<()> {
         agenterra_core::openapi::OpenApiContext::from_file(&temp_file)
             .await
             .map_err(|e| {
-                anyhow::anyhow!("Failed to parse OpenAPI schema from {}: {}", schema_path, e)
+                anyhow::anyhow!("Failed to parse OpenAPI schema from {}: {}\nSee docs/CONFIGURATION.md#troubleshooting", schema_path, e)
             })?
     } else {
         // It's a file path
         agenterra_core::openapi::OpenApiContext::from_file(schema_path)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to load OpenAPI schema: {}", e))?
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to load OpenAPI schema: {}\nSee docs/CONFIGURATION.md#troubleshooting",
+                    e
+                )
+            })?
     };
 
     // Create config with template
@@ -209,6 +220,50 @@ async fn run_scaffold(args: ScaffoldArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn watch_and_scaffold(args: ScaffoldArgs) -> anyhow::Result<()> {
+    if args.schema_path.starts_with("http://") || args.schema_path.starts_with("https://") {
+        println!("--watch is only supported for local schema files");
+        return run_scaffold(&args).await;
+    }
+
+    let (tx, mut rx) = mpsc::channel(1);
+    let schema = args.schema_path.clone();
+    let mut watcher = recommended_watcher(move |res| {
+        let _ = tx.blocking_send(res);
+    })?;
+    watcher.watch(Path::new(&schema), RecursiveMode::NonRecursive)?;
+
+    run_scaffold(&args).await?;
+    println!("Watching {} for changes...", schema);
+
+    while let Some(res) = rx.recv().await {
+        match res {
+            Ok(_event) => {
+                println!("Change detected. Regenerating...");
+                if let Err(e) = run_scaffold(&args).await {
+                    eprintln!("Generation failed: {e:#}");
+                }
+                let output_dir = args
+                    .output_dir
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from(&args.project_name));
+                let build = tokio::process::Command::new("cargo")
+                    .arg("check")
+                    .current_dir(&output_dir)
+                    .output()
+                    .await?;
+                if !build.status.success() {
+                    eprintln!("Build errors:\n{}", String::from_utf8_lossy(&build.stderr));
+                } else {
+                    println!("Build succeeded.");
+                }
+            }
+            Err(e) => eprintln!("Watch error: {e:?}"),
+        }
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
@@ -224,6 +279,7 @@ async fn main() -> anyhow::Result<()> {
             log_file,
             port,
             base_url,
+            watch,
         } => {
             let args = ScaffoldArgs {
                 project_name: project_name.clone(),
@@ -234,8 +290,13 @@ async fn main() -> anyhow::Result<()> {
                 log_file: log_file.clone(),
                 port: *port,
                 base_url: base_url.clone(),
+                watch: *watch,
             };
-            run_scaffold(args).await?;
+            if args.watch {
+                watch_and_scaffold(args).await?;
+            } else {
+                run_scaffold(&args).await?;
+            }
         }
         Commands::Init => {
             let theme = ColorfulTheme::default();
@@ -246,7 +307,17 @@ async fn main() -> anyhow::Result<()> {
 
             let schema_path: String = Input::with_theme(&theme)
                 .with_prompt("Path or URL to OpenAPI schema")
+                .default("tests/fixtures/openapi/petstore.openapi.v3.json".into())
                 .interact_text()?;
+            if !schema_path.starts_with("http://")
+                && !schema_path.starts_with("https://")
+                && tokio::fs::metadata(&schema_path).await.is_err()
+            {
+                return Err(anyhow::anyhow!(
+                    "Schema path does not exist: {}",
+                    schema_path
+                ));
+            }
 
             let templates: Vec<String> = TemplateKind::all()
                 .map(|k| k.as_str().to_string())
@@ -273,8 +344,13 @@ async fn main() -> anyhow::Result<()> {
                 log_file: None,
                 port: None,
                 base_url: None,
+                watch: false,
             };
-            run_scaffold(args).await?;
+            if args.watch {
+                watch_and_scaffold(args).await?;
+            } else {
+                run_scaffold(&args).await?;
+            }
         }
         Commands::ListTemplates => {
             println!("Available template kinds:");
