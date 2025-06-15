@@ -48,7 +48,7 @@
 - [ ] Example generation
 
 ### 4. Developer Experience (Q4 2025)
-- [ ] Interactive scaffolding
+- [x] Interactive scaffolding
 - [ ] Template hot-reload
 - [ ] Better error messages
 - [ ] Development server
