@@ -20,8 +20,9 @@ struct Cli {
 }
 
 #[derive(clap::Subcommand, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Commands {
-    // TODO: Add future subcommands here (e.g., Validate, ListTemplates, etc.)
+    // TODO: Add future subcommands here (e.g., ListTemplates, etc.)
     /// Scaffold a new MCP server from an OpenAPI spec
     Scaffold {
         /// Project name
@@ -52,6 +53,12 @@ pub enum Commands {
         /// Base URL of the OpenAPI specification (Optional)
         #[arg(long)]
         base_url: Option<Url>,
+    },
+    /// Validate an OpenAPI specification
+    Validate {
+        /// Path or URL to OpenAPI schema
+        #[arg(long)]
+        schema_path: String,
     },
 }
 
@@ -203,6 +210,14 @@ async fn main() -> anyhow::Result<()> {
                 "✅ Successfully generated server in: {}",
                 output_path.display()
             );
+        }
+        Commands::Validate { schema_path } => {
+            let spec = agenterra_core::openapi::OpenApiContext::from_file_or_url(schema_path)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to load OpenAPI schema: {}", e))?;
+            spec.validate()
+                .map_err(|e| anyhow::anyhow!("Invalid OpenAPI schema: {}", e))?;
+            println!("✅ OpenAPI schema {} is valid", schema_path);
         }
     }
     Ok(())

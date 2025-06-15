@@ -110,6 +110,38 @@ mod tests {
         test_openapi_schema(&v2_schema_path, "Swagger v2 file-based", None)
     }
 
+    #[test]
+    fn test_validate_subcommand() -> Result<()> {
+        cleanup_env_vars();
+        let ctx = TestContext::new()?;
+
+        let schema_path =
+            get_test_openapi_schema_path("tests/fixtures/openapi/petstore.openapi.v3.json");
+
+        // Build CLI to ensure latest code
+        let build_status = Command::new("cargo")
+            .args(["build"])
+            .status()
+            .context("Failed to execute cargo build for agenterra CLI")?;
+
+        if !build_status.success() {
+            bail!("Failed to build agenterra CLI (status: {})", build_status);
+        }
+
+        let mut cmd = ctx.build_command()?;
+        cmd.arg("validate").arg("--schema-path").arg(&schema_path);
+
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+            bail!("Failed to validate schema");
+        }
+
+        Ok(())
+    }
+
     // Helper function to clean up environment variables after test
     fn cleanup_env_vars() {
         let env_vars = [

@@ -162,6 +162,18 @@ impl OpenApiContext {
         None
     }
 
+    /// Basic validation to ensure the document appears to be a valid OpenAPI specification.
+    ///
+    /// Returns an error if neither an `openapi` nor a `swagger` key is present.
+    pub fn validate(&self) -> crate::Result<()> {
+        if self.json.get("openapi").is_none() && self.json.get("swagger").is_none() {
+            return Err(Error::openapi(
+                "Missing 'openapi' or 'swagger' field".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Parse all endpoints into structured contexts for template rendering
     pub async fn parse_operations(&self) -> crate::Result<Vec<OpenApiOperation>> {
         let mut operations = Vec::new();
@@ -959,5 +971,18 @@ mod tests {
             .filter_map(|p| p.get("name").and_then(JsonValue::as_str).map(String::from))
             .collect();
         assert_eq!(names, vec!["p".to_string(), "q".to_string()]);
+    }
+
+    #[test]
+    fn test_validate_method() {
+        let spec = OpenApiContext {
+            json: json!({"openapi": "3.0.0"}),
+        };
+        assert!(spec.validate().is_ok());
+
+        let invalid = OpenApiContext {
+            json: json!({"info": {}}),
+        };
+        assert!(invalid.validate().is_err());
     }
 }

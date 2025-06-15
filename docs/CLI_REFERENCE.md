@@ -8,6 +8,7 @@ This document provides a comprehensive reference for the Agenterra command-line 
 - [Global Options](#global-options)
 - [Commands](#commands)
   - [scaffold](#scaffold)
+  - [validate](#validate)
 - [Examples](#examples)
 - [Exit Codes](#exit-codes)
 
@@ -57,6 +58,14 @@ agenterra scaffold --spec api.yaml --output generated --template custom --templa
 
 # Configure server port and log file
 agenterra scaffold --spec api.yaml --output generated --port 8080 --log-file my-server
+```
+
+### validate
+
+Validate an OpenAPI specification without generating any code.
+
+```bash
+agenterra validate --schema-path <SPEC>
 ```
 
 ## Exit Codes
